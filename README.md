@@ -1,75 +1,73 @@
-# DayShelf
+# DayShelf V0 Final Build Fixes
 
-DayShelf is a private personal life archive built with Next.js, Better Auth, Prisma and Supabase PostgreSQL.
+These files are based on the latest pushed `JOHNNIKHIL/dayshelf` repository and the latest local build errors.
 
-## V0 — Authentication Foundation
+## Bugs fixed
 
-This milestone establishes:
+### 1. Better Auth client API mismatch
 
-- Next.js 16 App Router
-- Better Auth email/password authentication
-- Prisma 7 + PostgreSQL
-- Supabase pooled runtime connection
-- Supabase direct connection for Prisma CLI/migrations
-- Protected `/dashboard`
-- Sign up / sign in / sign out
-- A calm DayShelf visual foundation
+The project exported only `authClient` from `src/lib/auth-client.ts`, while the pages imported `signIn` and `signUp` as top-level exports.
 
-Google OAuth is intentionally deferred and can be added later without replacing Better Auth.
+Fixed to use the documented client API:
 
-## Setup
-
-1. Copy `.env.example` to `.env.local`.
-2. Paste the two Supabase connection strings into `DATABASE_URL` and `DIRECT_URL`.
-3. Generate a Better Auth secret:
-
-```bash
-openssl rand -base64 32
+```ts
+await authClient.signIn.email({ email, password });
+await authClient.signUp.email({ name, email, password });
 ```
 
-4. Put that value in `BETTER_AUTH_SECRET`.
-5. Install dependencies:
+### 2. Dashboard sign-out component missing
 
-```bash
-npm install
+Added:
+
+```text
+app/dashboard/sign-out-button.tsx
 ```
 
-6. The V0 ZIP already contains the initial Better Auth migration. Apply it with:
+### 3. Dashboard import path mismatch
 
-```bash
-npm run db:deploy
+Because the recommended TypeScript alias is:
+
+```json
+"@/*": ["./src/*"]
 ```
 
-If you later change Better Auth configuration/plugins, run `npm run auth:generate`, review the schema, then create a new Prisma migration with `npm run db:migrate -- --name <change-name>`.
+the dashboard now imports the local component with:
 
-7. Generate Prisma Client:
+```ts
+import { SignOutButton } from "./sign-out-button";
+```
 
-```bash
+### 4. `@/*` alias
+
+The canonical source-library structure is:
+
+```text
+src/lib/auth.ts
+src/lib/auth-client.ts
+src/lib/prisma.ts
+src/generated/prisma/client.ts
+```
+
+Therefore `@/*` maps to `./src/*`.
+
+## Apply
+
+Copy the files from this fix pack into the project, preserving the directory structure.
+
+Then run:
+
+```powershell
+Remove-Item .next -Recurse -Force
 npm run db:generate
+npm run build
 ```
 
-8. Start the application:
+If the build succeeds:
 
-```bash
-npm run dev
+```powershell
+npm run lint
 ```
 
-Open `http://localhost:3000`.
-
-## Important
-
-- Never commit `.env`, `.env.local`, database URLs, or Better Auth secrets.
-- The Supabase password is not included in this repository or ZIP.
-- Do not enable Supabase Auth; Better Auth owns authentication.
-- `DATABASE_URL` is the pooled runtime connection.
-- `DIRECT_URL` is used by Prisma CLI for migrations.
-
-## Roadmap
-
-- V0: Authentication foundation
-- V1: Daily journal, mood, timeline, calendar
-- V1.5: Weekly/monthly insights
-- V2: Plans, goals, milestones, habits
-- V2.5: Memories, tags, attachments, On This Day
-- V3: Invite-only access, audit logs, export/delete, production hardening
-- V4: Optional privacy-first AI reflection
+Do not run `npm audit fix --force`.
+Do not upgrade Prisma to 8 RC.
+Do not commit `.env`, `.env.local`, database passwords, or Better Auth secrets.

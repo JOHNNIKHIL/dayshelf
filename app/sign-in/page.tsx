@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -17,16 +17,21 @@ export default function SignInPage() {
     setError("");
     setLoading(true);
 
-    const result = await signIn.email({ email, password });
-    setLoading(false);
+    try {
+      const result = await authClient.signIn.email({ email, password });
 
-    if (result.error) {
-      setError(result.error.message ?? "Unable to sign in.");
-      return;
+      if (result.error) {
+        setError(result.error.message ?? "Unable to sign in.");
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Unable to sign in. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -49,7 +54,7 @@ export default function SignInPage() {
 
             {error && <p className="rounded-xl border border-red-400/20 bg-red-400/5 px-3 py-2 text-sm text-red-300">{error}</p>}
 
-            <button disabled={loading} className="w-full rounded-xl bg-white px-4 py-3 font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60">
+            <button type="submit" disabled={loading} className="w-full rounded-xl bg-white px-4 py-3 font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60">
               {loading ? "Signing in…" : "Sign in"}
             </button>
           </form>
