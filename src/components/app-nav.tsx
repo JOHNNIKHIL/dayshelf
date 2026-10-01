@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
@@ -28,7 +29,7 @@ export function AppNav({ user }: { user: { name: string; email?: string } }) {
     <>
       <aside className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-64 flex-col border-r border-[var(--border)] bg-[var(--surface)]/90 px-4 py-5 backdrop-blur-xl">
         <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2">
-          <span className="grid size-9 place-items-center rounded-xl bg-[var(--accent)] text-sm font-bold text-white shadow-lg shadow-[var(--accent)]/20">D</span>
+          <Image src="/img.png" alt="DayShelf" width={42} height={42} priority className="size-10 rounded-xl object-cover shadow-lg shadow-[var(--accent)]/15" />
           <div><div className="font-semibold tracking-tight">DayShelf</div><div className="text-[10px] uppercase tracking-[.18em] text-[var(--muted)]">Your life, archived</div></div>
         </Link>
         <nav className="mt-8 space-y-1">
@@ -46,7 +47,7 @@ export function AppNav({ user }: { user: { name: string; email?: string } }) {
 
       <div className="lg:hidden sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)]/90 px-4 py-3 backdrop-blur-xl">
         <div className="flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold"><span className="grid size-8 place-items-center rounded-lg bg-[var(--accent)] text-xs font-bold text-white">D</span>DayShelf</Link>
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold"><Image src="/img.png" alt="DayShelf" width={34} height={34} priority className="size-8 rounded-lg object-cover" />DayShelf</Link>
           <button onClick={signOut} className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs">Sign out</button>
         </div>
         <nav className="mt-3 flex gap-1 overflow-x-auto pb-0.5">
