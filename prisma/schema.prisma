@@ -15,6 +15,18 @@ enum Mood {
   GREAT
 }
 
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+enum MilestoneStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+}
+
 model User {
   id            String    @id
   name          String
@@ -26,6 +38,9 @@ model User {
   sessions      Session[]
   accounts      Account[]
   days          Day[]
+  goals         Goal[]
+  monthlyPlans  MonthlyPlan[]
+  habits        Habit[]
 
   @@map("user")
 }
@@ -92,7 +107,7 @@ model Day {
   stress       Int?
   productivity Int?
   social       Int?
-  sleep        Int?
+  sleep         Int?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   userId       String
@@ -122,15 +137,125 @@ model DayEvent {
 }
 
 model DayPlan {
-  id        String   @id @default(cuid())
-  title     String
-  completed Boolean  @default(false)
-  priority  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  dayId     String
-  day       Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  id          String     @id @default(cuid())
+  title       String
+  completed   Boolean    @default(false)
+  priority    Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  dayId       String
+  day         Day        @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  goalId      String?
+  goal        Goal?      @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  milestoneId String?
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
 
   @@index([dayId, completed, priority])
+  @@index([goalId])
+  @@index([milestoneId])
   @@map("day_plan")
+}
+
+model Goal {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      GoalStatus @default(ACTIVE)
+  targetDate  DateTime?  @db.Date
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones  Milestone[]
+  monthlyItems MonthlyPlanItem[]
+  dayPlans    DayPlan[]
+
+  @@index([userId, status])
+  @@index([userId, targetDate])
+  @@map("goal")
+}
+
+model Milestone {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  status      MilestoneStatus @default(TODO)
+  dueDate     DateTime?       @db.Date
+  sortOrder   Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  goalId      String
+  goal        Goal            @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  monthlyItems MonthlyPlanItem[]
+  dayPlans    DayPlan[]
+
+  @@index([goalId, status, sortOrder])
+  @@index([goalId, dueDate])
+  @@map("milestone")
+}
+
+model MonthlyPlan {
+  id          String            @id @default(cuid())
+  month       DateTime          @db.Date
+  title       String?
+  focus       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       MonthlyPlanItem[]
+
+  @@unique([userId, month])
+  @@index([userId, month])
+  @@map("monthly_plan")
+}
+
+model MonthlyPlanItem {
+  id          String      @id @default(cuid())
+  title       String
+  completed   Boolean     @default(false)
+  priority    Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  monthlyPlanId String
+  monthlyPlan MonthlyPlan @relation(fields: [monthlyPlanId], references: [id], onDelete: Cascade)
+  goalId      String?
+  goal        Goal?       @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  milestoneId String?
+  milestone   Milestone?  @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+
+  @@index([monthlyPlanId, completed, priority])
+  @@index([goalId])
+  @@index([milestoneId])
+  @@map("monthly_plan_item")
+}
+
+model Habit {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  frequency   String      @default("daily")
+  targetPerWeek Int       @default(7)
+  archived    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs        HabitLog[]
+
+  @@index([userId, archived])
+  @@map("habit")
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  completed Boolean  @default(true)
+  createdAt DateTime @default(now())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([habitId, date])
+  @@map("habit_log")
 }

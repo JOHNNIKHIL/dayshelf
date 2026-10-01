@@ -3,25 +3,35 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { dateFromKey, getTodayDateKey } from "@/lib/day";
-import { SignOutButton } from "./sign-out-button";
+import { dateFromKey, getTodayDateKey, addDays, dateKeyFromDate } from "@/lib/day";
+import { AppNav } from "@/components/app-nav";
 
-const moodLabels = { VERY_LOW:"Very low", LOW:"Low", OKAY:"Okay", GOOD:"Good", GREAT:"Great" };
+const moodEmoji={VERY_LOW:"😞",LOW:"😕",OKAY:"😐",GOOD:"🙂",GREAT:"😄"} as const;
 
-export default async function DashboardPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/sign-in");
-  const today = await prisma.day.findUnique({ where:{ userId_date:{ userId:session.user.id, date:dateFromKey(getTodayDateKey()) } }, include:{ events:{orderBy:{sortOrder:"asc"},take:3}, plans:{orderBy:[{completed:"asc"},{priority:"asc"}],take:5} } });
-  const completed = today?.plans.filter(p=>p.completed).length ?? 0;
-  const total = today?.plans.length ?? 0;
-  return <main className="min-h-screen px-5 py-7 sm:px-8 lg:px-10"><div className="mx-auto max-w-6xl">
-    <header className="flex items-center justify-between border-b border-[var(--border)] pb-5"><Link href="/" className="font-semibold tracking-tight">DayShelf</Link><div className="flex items-center gap-2"><Link href="/today" className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white">Open today</Link><SignOutButton/></div></header>
-    <section className="py-10"><p className="text-sm uppercase tracking-[0.2em] text-[var(--accent)]">Your shelf</p><h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Good to see you, {session.user.name}.</h1><p className="mt-4 max-w-2xl text-[var(--muted)]">Your personal day archive is ready. Capture the important bits now; the deeper calendar and memory layers come later.</p></section>
-    <div className="grid gap-5 lg:grid-cols-3">
-      <Link href="/today" className="card p-6 transition hover:-translate-y-0.5"><p className="text-sm text-[var(--muted)]">Today</p><h2 className="mt-2 text-2xl font-semibold">{today?.mood ? moodLabels[today.mood] : "Start your day"}</h2><p className="mt-6 text-sm text-[var(--muted)]">{today?.events.length ?? 0} moments · {total ? `${completed}/${total} plans complete` : "no plans yet"}</p></Link>
-      <div className="card p-6"><p className="text-sm text-[var(--muted)]">Recent moments</p><div className="mt-4 space-y-3">{today?.events.length ? today.events.map(e=><div key={e.id} className="flex gap-3 text-sm"><span className="w-12 shrink-0 text-[var(--muted)]">{e.time||"—"}</span><span>{e.title}</span></div>) : <p className="text-sm text-[var(--muted)]">Your timeline is empty.</p>}</div></div>
-      <div className="card p-6"><p className="text-sm text-[var(--muted)]">Plans</p><div className="mt-4 space-y-3">{today?.plans.length ? today.plans.map(p=><div key={p.id} className={`text-sm ${p.completed?'text-[var(--muted)] line-through':''}`}>{p.completed?'✓ ':''}{p.title}</div>) : <p className="text-sm text-[var(--muted)]">Add a few intentions for today.</p>}</div></div>
+export default async function DashboardPage(){
+  const session=await auth.api.getSession({headers:await headers()});if(!session)redirect("/sign-in");
+  const todayKey=getTodayDateKey(); const today=await prisma.day.findUnique({where:{userId_date:{userId:session.user.id,date:dateFromKey(todayKey)}},include:{events:{orderBy:{sortOrder:"asc"},take:4},plans:{orderBy:[{completed:"asc"},{priority:"asc"}],take:6}}});
+  const goals=await prisma.goal.findMany({where:{userId:session.user.id,status:"ACTIVE"},include:{milestones:true},orderBy:{updatedAt:"desc"},take:3});
+  const habits=await prisma.habit.findMany({where:{userId:session.user.id,archived:false},include:{logs:{where:{date:dateFromKey(todayKey)}}},take:4});
+  const done=today?.plans.filter(p=>p.completed).length??0; const total=today?.plans.length??0;
+  const weekStart=addDays(dateFromKey(todayKey),-6); const week=await prisma.day.count({where:{userId:session.user.id,date:{gte:weekStart,lte:dateFromKey(todayKey)}}});
+  return <div className="app-frame"><AppNav user={session.user}/><main className="app-main">
+    <section className="page-hero"><p className="eyebrow">Thursday · {new Intl.DateTimeFormat("en-IN",{month:"long",day:"numeric",year:"numeric",timeZone:"UTC"}).format(dateFromKey(todayKey))}</p><h1>Good to see you, {session.user.name.split(" ")[0]}.</h1><p>Your life doesn't need another productivity dashboard. DayShelf keeps the day, the plan and the bigger picture in one quiet place.</p></section>
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Link href="/today" className="card p-5 transition hover:-translate-y-0.5"><p className="text-xs uppercase tracking-wider text-[var(--muted)]">Today</p><div className="mt-4 flex items-end justify-between"><h2 className="text-2xl font-semibold">{today?.mood?moodEmoji[today.mood]:"Start"}</h2><span className="text-xs text-[var(--muted)]">{today?.title||"Write your day"}</span></div></Link>
+      <Link href="/planning" className="card p-5 transition hover:-translate-y-0.5"><p className="text-xs uppercase tracking-wider text-[var(--muted)]">This month</p><h2 className="mt-4 text-2xl font-semibold">Plan with intent</h2><p className="mt-2 text-xs text-[var(--muted)]">Monthly objectives → daily actions</p></Link>
+      <Link href="/goals" className="card p-5 transition hover:-translate-y-0.5"><p className="text-xs uppercase tracking-wider text-[var(--muted)]">Direction</p><h2 className="mt-4 text-2xl font-semibold">{goals.length} active goals</h2><p className="mt-2 text-xs text-[var(--muted)]">Keep the important visible</p></Link>
+      <Link href="/insights" className="card p-5 transition hover:-translate-y-0.5"><p className="text-xs uppercase tracking-wider text-[var(--muted)]">Archive</p><h2 className="mt-4 text-2xl font-semibold">{week} captured days</h2><p className="mt-2 text-xs text-[var(--muted)]">Last 7 days</p></Link>
+    </section>
+    <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
+      <section className="card p-5 sm:p-7"><div className="flex items-end justify-between"><div><p className="eyebrow">Today</p><h2 className="mt-2 text-2xl font-semibold">{today?.title||"Give today a name"}</h2></div><Link href="/today" className="text-sm text-[var(--accent)]">Open day →</Link></div>
+        <div className="mt-7 grid gap-3 sm:grid-cols-2">{today?.events.length?today.events.map(e=><div key={e.id} className="rounded-2xl border border-[var(--border)] p-4"><p className="text-xs text-[var(--muted)]">{e.time||"Moment"}</p><p className="mt-1 font-medium">{e.title}</p></div>):<Link href="/today" className="rounded-2xl border border-dashed border-[var(--border)] p-5 text-sm text-[var(--muted)] hover:bg-[var(--background)]">Your timeline is empty. Capture one moment.</Link>}</div>
+      </section>
+      <section className="card p-5 sm:p-7"><div className="flex justify-between"><div><p className="eyebrow">Today's plans</p><h2 className="mt-2 text-xl font-semibold">{total?`${done}/${total} complete`:"Nothing planned yet"}</h2></div><Link href="/today" className="text-sm text-[var(--accent)]">Edit →</Link></div><div className="mt-6 space-y-2">{today?.plans.length?today.plans.map(p=><div key={p.id} className={`rounded-xl border border-[var(--border)] px-3 py-2.5 text-sm ${p.completed?"text-[var(--muted)] line-through":""}`}>{p.completed?"✓ ":""}{p.title}</div>):<p className="text-sm leading-6 text-[var(--muted)]">Add two or three things you would be glad to finish today.</p>}</div></section>
     </div>
-    <div className="mt-6 grid gap-5 sm:grid-cols-3"><Link href="/calendar" className="card p-5 transition hover:-translate-y-0.5"><p className="text-sm text-[var(--muted)]">Calendar</p><h2 className="mt-2 text-lg font-medium">Browse your days</h2><p className="mt-3 text-sm text-[var(--muted)]">Jump through months and reopen any journal day.</p></Link><Link href="/insights" className="card p-5 transition hover:-translate-y-0.5"><p className="text-sm text-[var(--muted)]">Reflections</p><h2 className="mt-2 text-lg font-medium">See your patterns</h2><p className="mt-3 text-sm text-[var(--muted)]">Mood, life metrics and plan completion.</p></Link><div className="card p-5"><p className="text-sm text-[var(--muted)]">Memories</p><h2 className="mt-2 text-lg font-medium">Later</h2><p className="mt-3 text-sm text-[var(--muted)]">Search, tags, attachments and On this day.</p></div></div>
-  </div></main>;
+    <section className="mt-5 grid gap-5 lg:grid-cols-2">
+      <div className="card p-5 sm:p-7"><div className="flex justify-between"><div><p className="eyebrow">Goals</p><h2 className="mt-2 text-xl font-semibold">Keep moving the bigger things</h2></div><Link href="/goals" className="text-sm text-[var(--accent)]">Manage →</Link></div><div className="mt-5 space-y-3">{goals.length?goals.map(g=>{const d=g.milestones.filter(m=>m.status==="COMPLETED").length;return <Link key={g.id} href={`/goals/${g.id}`} className="block rounded-2xl border border-[var(--border)] p-4"><div className="flex justify-between gap-3"><span className="font-medium">{g.title}</span><span className="text-xs text-[var(--muted)]">{d}/{g.milestones.length}</span></div><div className="mt-3 h-1.5 rounded-full bg-[var(--border)]"><div className="h-full rounded-full bg-[var(--accent)]" style={{width:`${g.milestones.length?d/g.milestones.length*100:0}%`}}/></div></Link>}):<Link href="/goals" className="text-sm text-[var(--muted)]">Create your first goal →</Link>}</div></div>
+      <div className="card p-5 sm:p-7"><div className="flex justify-between"><div><p className="eyebrow">Habits</p><h2 className="mt-2 text-xl font-semibold">A few things worth repeating</h2></div><Link href="/habits" className="text-sm text-[var(--accent)]">Manage →</Link></div><div className="mt-5 space-y-2">{habits.length?habits.map(h=><div key={h.id} className="flex items-center justify-between rounded-2xl border border-[var(--border)] p-4"><span className="text-sm">{h.name}</span><span className="text-sm text-[var(--accent)]">{h.logs[0]?.completed?"✓ Done":"Today"}</span></div>):<Link href="/habits" className="text-sm text-[var(--muted)]">Add a habit →</Link>}</div></div>
+    </section>
+  </main></div>
 }
