@@ -8,7 +8,6 @@ CREATE TABLE "user" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "user_pkey" PRIMARY KEY ("id")
 );
-
 CREATE TABLE "session" (
     "id" TEXT NOT NULL,
     "expiresAt" TIMESTAMP(3) NOT NULL,
@@ -20,7 +19,6 @@ CREATE TABLE "session" (
     "userId" TEXT NOT NULL,
     CONSTRAINT "session_pkey" PRIMARY KEY ("id")
 );
-
 CREATE TABLE "account" (
     "id" TEXT NOT NULL,
     "accountId" TEXT NOT NULL,
@@ -37,7 +35,6 @@ CREATE TABLE "account" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "account_pkey" PRIMARY KEY ("id")
 );
-
 CREATE TABLE "verification" (
     "id" TEXT NOT NULL,
     "identifier" TEXT NOT NULL,
@@ -47,13 +44,11 @@ CREATE TABLE "verification" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "verification_pkey" PRIMARY KEY ("id")
 );
-
 CREATE UNIQUE INDEX "user_email_key" ON "user"("email");
 CREATE UNIQUE INDEX "session_token_key" ON "session"("token");
 CREATE INDEX "session_userId_idx" ON "session"("userId");
 CREATE INDEX "account_userId_idx" ON "account"("userId");
 CREATE INDEX "account_providerId_accountId_idx" ON "account"("providerId", "accountId");
 CREATE INDEX "verification_identifier_idx" ON "verification"("identifier");
-
 ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;

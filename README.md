@@ -1,73 +1,34 @@
-# DayShelf V0 Final Build Fixes
+# DayShelf
 
-These files are based on the latest pushed `JOHNNIKHIL/dayshelf` repository and the latest local build errors.
+Private daily life archive built with Next.js, Better Auth, Prisma 7 and PostgreSQL/Supabase.
 
-## Bugs fixed
+## V1 Journal Core
 
-### 1. Better Auth client API mismatch
+This version adds the first persistent DayShelf domain model:
 
-The project exported only `authClient` from `src/lib/auth-client.ts`, while the pages imported `signIn` and `signUp` as top-level exports.
+- `Day` — one private calendar day per user
+- mood and five 1–5 dimensions
+- thoughts, highlights, gratitude, challenges and wins
+- `DayEvent` timeline moments
+- `DayPlan` daily plans with completion tracking
+- ownership checks on every server action
+- `/today` protected journal editor
+- dashboard summary linked to today's journal
 
-Fixed to use the documented client API:
+## Local setup
 
-```ts
-await authClient.signIn.email({ email, password });
-await authClient.signUp.email({ name, email, password });
-```
+1. Keep your existing `.env.local` values for `DATABASE_URL`, `DIRECT_URL`, `BETTER_AUTH_SECRET`, and `BETTER_AUTH_URL`.
+2. Run `npm install`.
+3. Run `npm run db:generate`.
+4. Run `npm run db:migrate -- --name add_day_journal_core` only if you are starting from the pre-V1 repository without the included migration. If the included `0002_day_journal_core` migration is present, use `npm run db:migrate`.
+5. Run `npm run lint`.
+6. Run `npm run build`.
+7. Run `npm run dev` and open `/today` after signing in.
 
-### 2. Dashboard sign-out component missing
+The default journal timezone is `Asia/Kolkata`. Set `APP_TIME_ZONE` to another IANA timezone if needed.
 
-Added:
+## Security model
 
-```text
-app/dashboard/sign-out-button.tsx
-```
+Journal queries are always scoped to the authenticated Better Auth user. Client-supplied `dayId`, `eventId`, and `planId` values are re-checked server-side against ownership before mutation.
 
-### 3. Dashboard import path mismatch
-
-Because the recommended TypeScript alias is:
-
-```json
-"@/*": ["./src/*"]
-```
-
-the dashboard now imports the local component with:
-
-```ts
-import { SignOutButton } from "./sign-out-button";
-```
-
-### 4. `@/*` alias
-
-The canonical source-library structure is:
-
-```text
-src/lib/auth.ts
-src/lib/auth-client.ts
-src/lib/prisma.ts
-src/generated/prisma/client.ts
-```
-
-Therefore `@/*` maps to `./src/*`.
-
-## Apply
-
-Copy the files from this fix pack into the project, preserving the directory structure.
-
-Then run:
-
-```powershell
-Remove-Item .next -Recurse -Force
-npm run db:generate
-npm run build
-```
-
-If the build succeeds:
-
-```powershell
-npm run lint
-```
-
-Do not run `npm audit fix --force`.
-Do not upgrade Prisma to 8 RC.
-Do not commit `.env`, `.env.local`, database passwords, or Better Auth secrets.
+Do not commit `.env` or `.env.local` files.
