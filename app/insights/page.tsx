@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { addDays, getTodayDateKey, dateFromKey } from "@/lib/day";
 import { AppNav } from "@/components/app-nav";
-import { DailyVisuals } from "@/app/today/daily-visuals";
+import { DailyVisuals } from "../today/daily-visuals";
 import Link from "next/link";
 
 export default async function InsightsPage() {
