@@ -1,0 +1,23 @@
+DayShelf auth + database migration update
+
+1. Extract this ZIP over the existing DayShelf project.
+2. It adds the auth form files under src/components/auth/ so the @/* alias works.
+3. It changes prisma7.config.ts so Prisma migrations use DIRECT_URL instead of the pooled DATABASE_URL.
+
+After extracting:
+
+    npm run db:deploy
+    npm run build
+    npm run dev
+
+Then test:
+
+    http://localhost:3000/sign-up
+
+Do not paste DATABASE_URL, DIRECT_URL, or BETTER_AUTH_SECRET into chat.
+
+Production BETTER_AUTH_URL should remain:
+    https://dayshelf.vercel.app
+
+Local BETTER_AUTH_URL should remain:
+    http://localhost:3000
