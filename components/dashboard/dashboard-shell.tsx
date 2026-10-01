@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signOut } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 
 type DashboardUser = { name: string; email: string };
 
@@ -10,7 +10,7 @@ export function DashboardShell({ user }: { user: DashboardUser }) {
   const router = useRouter();
 
   async function handleSignOut() {
-    await signOut();
+    await authClient.signOut();
     router.push("/");
     router.refresh();
   }
