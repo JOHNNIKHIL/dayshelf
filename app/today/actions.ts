@@ -17,18 +17,25 @@ function textValue(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function optionalText(value: string) { return value || null; }
+function optionalText(value: string) {
+  return value || null;
+}
 
 function metric(formData: FormData, key: string) {
   const raw = textValue(formData, key);
   if (!raw) return null;
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < 1 || value > 5) throw new Error("Metrics must be between 1 and 5.");
+  if (!Number.isInteger(value) || value < 1 || value > 5) {
+    throw new Error("Metrics must be between 1 and 5.");
+  }
   return value;
 }
 
 async function ownedDay(userId: string, dayId: string) {
-  const day = await prisma.day.findFirst({ where: { id: dayId, userId }, select: { id: true } });
+  const day = await prisma.day.findFirst({
+    where: { id: dayId, userId },
+    select: { id: true },
+  });
   if (!day) throw new Error("Day not found.");
   return day.id;
 }
@@ -36,12 +43,17 @@ async function ownedDay(userId: string, dayId: string) {
 export async function saveDay(formData: FormData) {
   const userId = await requireUserId();
   const dayId = textValue(formData, "dayId");
-  const id = await ownedDay(userId, dayId);
+  if (!dayId) throw new Error("Day ID is required.");
+
   const mood = textValue(formData, "mood");
   const allowedMood = ["VERY_LOW", "LOW", "OKAY", "GOOD", "GREAT"] as const;
 
-  await prisma.day.update({
-    where: { id },
+  // One ownership-aware UPDATE instead of SELECT + UPDATE.
+  const result = await prisma.day.updateMany({
+    where: {
+      id: dayId,
+      userId,
+    },
     data: {
       title: optionalText(textValue(formData, "title")),
       thoughts: optionalText(textValue(formData, "thoughts")),
@@ -57,8 +69,15 @@ export async function saveDay(formData: FormData) {
       sleep: metric(formData, "sleep"),
     },
   });
-  revalidatePath("/today");
-  revalidatePath("/dashboard");
+
+  if (result.count !== 1) {
+    throw new Error("Day not found.");
+  }
+
+  // Intentionally do not revalidate /today or /dashboard here.
+  // The Save action should finish as soon as the database write succeeds.
+  // The client can refresh the page separately without blocking the save.
+  return { ok: true };
 }
 
 export async function addEvent(formData: FormData) {

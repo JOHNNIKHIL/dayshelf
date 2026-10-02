@@ -22,16 +22,34 @@ function MetricScale({name,label,help,value,onChange}:{name:string;label:string;
 
 export function TodayEditor({day,dateKey,history}:{day:DayData;dateKey:string;history:HistoryDay[]}){
  const [saving,setSaving]=useState(false);
+ const [saveState,setSaveState]=useState<'idle'|'saved'|'error'>('idle');
+ const [saveError,setSaveError]=useState('');
  const [metricValues,setMetricValues]=useState<Record<string,number|null>>({energy:day.energy,stress:day.stress,productivity:day.productivity,social:day.social,sleep:day.sleep});
  const progress=day.plans.length?Math.round(day.plans.filter(p=>p.completed).length/day.plans.length*100):0;
  const [eventTime,setEventTime]=useState('');
  const [eventCategory,setEventCategory]=useState('');
- function submitDay(){setSaving(true)}
  function jumpDate(e:FormEvent<HTMLInputElement>){const value=e.currentTarget.value;if(value) window.location.href=`/today?date=${value}`;}
+ async function handleSave(formData:FormData){
+   setSaving(true);
+   setSaveState('idle');
+   setSaveError('');
+   try{
+     await saveDay(formData);
+     setSaveState('saved');
+     // Refresh independently so charts/history can pick up the new values.
+     // The database save is already complete and is not blocked by this refresh.
+     window.setTimeout(()=>window.location.reload(),80);
+   }catch(error){
+     setSaveState('error');
+     setSaveError(error instanceof Error ? error.message : 'Could not save your day.');
+   }finally{
+     setSaving(false);
+   }
+ }
  return <div className="space-y-8">
    <section className="card p-5 sm:p-7 animate-rise">
-    <form action={async fd=>{setSaving(true);try{await saveDay(fd)}finally{setSaving(false)}}}>
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div><p className="eyebrow">Daily journal</p><h2 className="mt-2 text-2xl font-semibold">How did today feel?</h2><p className="mt-1 text-sm text-[var(--muted)]">Capture the signal. The story can be as short or as deep as you want.</p></div><button disabled={saving} className="button-primary save-glow" onClick={submitDay}>{saving?'Saving…':'Save day'}</button></div>
+    <form action={handleSave}>
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div><p className="eyebrow">Daily journal</p><h2 className="mt-2 text-2xl font-semibold">How did today feel?</h2><p className="mt-1 text-sm text-[var(--muted)]">Capture the signal. The story can be as short or as deep as you want.</p></div><div className="flex items-center gap-3"><span aria-live="polite" className={`text-sm ${saveState==='saved'?'text-emerald-400':saveState==='error'?'text-red-400':'text-[var(--muted)]'}`}>{saveState==='saved'?'Saved ✓':saveState==='error'?saveError:''}</span><button disabled={saving} className="button-primary save-glow" type="submit">{saving?'Saving…':saveState==='saved'?'Saved ✓':'Save day'}</button></div></div>
       <input type="hidden" name="dayId" value={day.id}/>
       <div className="mt-7 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end"><label className="block text-sm"><span className="label">Day title</span><input name="title" defaultValue={day.title??''} className="field field-lg" placeholder="Give this day a name"/></label><label className="date-jump"><span>Jump to date</span><input type="date" value={dateKey} onChange={jumpDate}/></label></div>
       <div className="mt-8"><div className="flex items-end justify-between"><div><span className="label">Mood</span><p className="text-xs text-[var(--muted)]">Choose the closest overall feeling.</p></div></div><div className="mood-grid mt-3">{moods.map(([v,l,e])=><label key={v} className="mood-option"><input type="radio" name="mood" value={v} defaultChecked={day.mood===v} className="peer sr-only"/><span><b>{e}</b><small>{l}</small></span></label>)}</div></div>
